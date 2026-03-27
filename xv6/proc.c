@@ -261,6 +261,13 @@ exit(void)
     }
   }
 
+  // Ensure the killed flag is set for processes terminated due to page faults
+  if (curproc->killed) {
+    curproc->state = ZOMBIE;
+    sched();
+    panic("zombie exit");
+  }
+
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
@@ -275,7 +282,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.

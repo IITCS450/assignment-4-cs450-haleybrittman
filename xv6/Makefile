@@ -183,7 +183,9 @@ UPROGS=\
 	_zombie\
 	_testnull\
 	_testkaccess\
-
+	_testmprotect\
+	_testmunprotect
+  #changes
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

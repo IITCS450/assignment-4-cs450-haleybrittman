@@ -328,6 +328,10 @@ copyuvm(pde_t *pgdir, uint sz)
       continue;
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
+
+    if (!(*pte & PTE_W)) {
+      flags &= ~PTE_W;
+    }
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
@@ -394,6 +398,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 
 int mprotect(void *addr, int len) {
+  cprintf("mprotect: addr=%p, len=%d\n", addr, len);
   if ((uint)addr % PGSIZE != 0 || len <= 0) {
     return -1;
   }
@@ -412,6 +417,7 @@ int mprotect(void *addr, int len) {
 }
 
 int munprotect(void *addr, int len) {
+  cprintf("munprotect: addr=%p, len=%d\n", addr, len);
   if ((uint)addr % PGSIZE != 0 || len <= 0) {
     return -1;
   }
@@ -423,7 +429,7 @@ int munprotect(void *addr, int len) {
     if (!pte || !(*pte & PTE_P)) {
       return -1;
     }
-    *pte |= PTE_W;
+    *pte |= PTE_W; 
   }
   lcr3(V2P(curproc->pgdir)); 
   return 0;
