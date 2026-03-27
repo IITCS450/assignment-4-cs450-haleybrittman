@@ -332,6 +332,7 @@ copyuvm(pde_t *pgdir, uint sz)
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
+    // Ensure PTE_W is copied correctly
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
       kfree(mem);
       goto bad;
@@ -391,4 +392,40 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // Blank page.
 //PAGEBREAK!
 // Blank page.
+
+int mprotect(void *addr, int len) {
+  if ((uint)addr % PGSIZE != 0 || len <= 0) {
+    return -1;
+  }
+
+  struct proc *curproc = myproc();
+  pte_t *pte;
+  for (int i = 0; i < len; i++) {
+    pte = walkpgdir(curproc->pgdir, addr + i * PGSIZE, 0);
+    if (!pte || !(*pte & PTE_P)) {
+      return -1;
+    }
+    *pte &= ~PTE_W;
+  }
+  lcr3(V2P(curproc->pgdir)); // Flush TLB
+  return 0;
+}
+
+int munprotect(void *addr, int len) {
+  if ((uint)addr % PGSIZE != 0 || len <= 0) {
+    return -1;
+  }
+
+  struct proc *curproc = myproc();
+  pte_t *pte;
+  for (int i = 0; i < len; i++) {
+    pte = walkpgdir(curproc->pgdir, addr + i * PGSIZE, 0);
+    if (!pte || !(*pte & PTE_P)) {
+      return -1;
+    }
+    *pte |= PTE_W;
+  }
+  lcr3(V2P(curproc->pgdir)); // Flush TLB
+  return 0;
+}
 
