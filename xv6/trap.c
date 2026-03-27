@@ -77,6 +77,21 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    {
+      uint faulting_address = rcr2();
+      struct proc *curproc = myproc();
+      if (curproc) {
+        cprintf("Page fault in process %d (%s): VA 0x%x, EIP 0x%x\n",
+                curproc->pid, curproc->name, faulting_address, tf->eip);
+        if (faulting_address < PGSIZE && (tf->cs & 3) == DPL_USER) {
+          cprintf("NULL dereference detected. Killing process %d (%s).\n",
+                  curproc->pid, curproc->name);
+          curproc->killed = 1;
+        }
+      }
+    }
+    break;
 
   //PAGEBREAK: 13
   default:
