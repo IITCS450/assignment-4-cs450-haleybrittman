@@ -81,15 +81,23 @@ trap(struct trapframe *tf)
     {
       uint faulting_address = rcr2();
       struct proc *curproc = myproc();
-      if (curproc) {
-        cprintf("Page fault in process %d (%s): VA 0x%x, EIP 0x%x\n",
-                curproc->pid, curproc->name, faulting_address, tf->eip);
-        if (faulting_address < PGSIZE && (tf->cs & 3) == DPL_USER) {
-          cprintf("NULL dereference detected. Killing process %d (%s).\n",
-                  curproc->pid, curproc->name);
-          curproc->killed = 1;
-        }
+
+      if (curproc == 0 || (tf->cs & 3) == 0) {
+        cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
+                tf->trapno, cpuid(), tf->eip, faulting_address);
+        panic("trap");
       }
+
+      cprintf("Page fault in process %d (%s): VA 0x%x, EIP 0x%x\n",
+              curproc->pid, curproc->name, faulting_address, tf->eip);
+      if (faulting_address < PGSIZE) {
+        cprintf("NULL dereference detected. Killing process %d (%s).\n",
+                curproc->pid, curproc->name);
+      } else {
+        cprintf("Killing process %d (%s).\n",
+                curproc->pid, curproc->name);
+      }
+      curproc->killed = 1;
     }
     break;
 

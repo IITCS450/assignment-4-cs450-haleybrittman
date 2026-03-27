@@ -323,16 +323,14 @@ copyuvm(pde_t *pgdir, uint sz)
   if((d = setupkvm()) == 0)
     return 0;
   for(i = 0; i < sz; i += PGSIZE){
-    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+    pte = walkpgdir(pgdir, (void *) i, 0);
+    if(pte == 0 || !(*pte & PTE_P))
+      continue;
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
       goto bad;
     memmove(mem, (char*)P2V(pa), PGSIZE);
-    // Ensure PTE_W is copied correctly
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
       kfree(mem);
       goto bad;
@@ -353,6 +351,8 @@ uva2ka(pde_t *pgdir, char *uva)
   pte_t *pte;
 
   pte = walkpgdir(pgdir, uva, 0);
+  if(pte == 0)
+    return 0;
   if((*pte & PTE_P) == 0)
     return 0;
   if((*pte & PTE_U) == 0)
@@ -407,7 +407,7 @@ int mprotect(void *addr, int len) {
     }
     *pte &= ~PTE_W;
   }
-  lcr3(V2P(curproc->pgdir)); // Flush TLB
+  lcr3(V2P(curproc->pgdir)); 
   return 0;
 }
 
@@ -425,7 +425,7 @@ int munprotect(void *addr, int len) {
     }
     *pte |= PTE_W;
   }
-  lcr3(V2P(curproc->pgdir)); // Flush TLB
+  lcr3(V2P(curproc->pgdir)); 
   return 0;
 }
 
